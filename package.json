@@ -1,0 +1,103 @@
+{
+  "name": "csharp-code-search",
+  "displayName": "C# Code Search",
+  "description": "Visual Studio style Code Search for C#: find types, methods, fields, locals and parameters with a live code preview.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "c#",
+    "csharp",
+    "search",
+    "symbols",
+    "navigation"
+  ],
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "csharpCodeSearch.open",
+        "title": "Code Search",
+        "category": "C#"
+      },
+      {
+        "command": "csharpCodeSearch.rebuildIndex",
+        "title": "Rebuild Code Search Index",
+        "category": "C#"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "csharpCodeSearch.open",
+        "key": "ctrl+t",
+        "mac": "cmd+t",
+        "when": "editorLangId == csharp || activeWebviewPanelId == csharpCodeSearch"
+      }
+    ],
+    "configuration": {
+      "title": "C# Code Search",
+      "properties": {
+        "csharpCodeSearch.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/bin/**",
+            "**/obj/**",
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/.vs/**"
+          ],
+          "markdownDescription": "Glob patterns of files to leave out of the index. Applied on top of `#files.exclude#`."
+        },
+        "csharpCodeSearch.maxResults": {
+          "type": "number",
+          "default": 200,
+          "minimum": 10,
+          "maximum": 2000,
+          "description": "Maximum number of results listed for a search. Tab counts always show the full total."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc -p . && tsc -p src/webview",
+    "pretest": "node esbuild.mjs",
+    "test": "vitest run",
+    "test:integration": "node esbuild.mjs --tests && node out/test/runTest.js",
+    "test:e2e": "node esbuild.mjs && node test/e2e/run.mjs",
+    "package": "vsce package --no-dependencies --skip-license --allow-missing-repository",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.12.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/codicons": "0.0.44",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "jsonc-parser": "^3.3.1",
+    "mocha": "^11.7.0",
+    "playwright-core": "^1.50.0",
+    "tree-sitter-c-sharp": "0.23.5",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.5",
+    "web-tree-sitter": "0.27.1"
+  }
+}
