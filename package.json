@@ -43,7 +43,19 @@
         "command": "csharpCodeSearch.open",
         "key": "ctrl+t",
         "mac": "cmd+t",
-        "when": "editorLangId == csharp || activeWebviewPanelId == csharpCodeSearch"
+        "when": "editorLangId == csharp || activeCustomEditorId == csharpCodeSearch.search"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "csharpCodeSearch.search",
+        "displayName": "C# Code Search",
+        "selector": [
+          {
+            "filenamePattern": "Code Search"
+          }
+        ],
+        "priority": "option"
       }
     ],
     "configuration": {

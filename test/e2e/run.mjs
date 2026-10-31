@@ -51,6 +51,13 @@ async function panelIsOpen() {
   return inputs.some(Boolean);
 }
 
+/** The title of VS Code's modal overlay, the same one Settings opens in, if it is showing. */
+function modalTitle() {
+  return page.evaluate(
+    () => document.querySelector('.monaco-modal-editor-block [class*="title"]')?.textContent?.replace(/\s+/g, ' ').trim(),
+  );
+}
+
 async function search(text) {
   await page.keyboard.press('Control+A');
   await settle(100);
@@ -102,6 +109,10 @@ try {
 
   await check('Ctrl+T opens the panel with the input focused', async () => {
     assert.equal((await state(frame)).focused, 'query');
+  });
+
+  await check('the panel is a modal dialog, like Settings', async () => {
+    assert.equal(await modalTitle(), 'Code SearchC#');
   });
 
   await check('finds a method by CamelCase initials and previews it', async () => {
@@ -158,10 +169,25 @@ try {
     assert.deepEqual((await state(frame)).rows, ['HTMLParser']);
   });
 
+  await check('Ctrl+T inside the dialog selects the query', async () => {
+    await page.keyboard.press('Control+T');
+    await settle();
+    const selected = await frame.$eval('#query', (input) => input.value.slice(input.selectionStart, input.selectionEnd));
+    assert.equal(selected, 'HTMLParser');
+  });
+
+  await check('Ctrl+Enter opens the symbol and keeps the dialog', async () => {
+    await page.keyboard.press('Control+Enter');
+    await settle(1200);
+    assert.equal(await panelIsOpen(), true);
+    assert.equal((await state(frame)).focused, 'query');
+  });
+
   await check('Enter opens the symbol and closes the panel', async () => {
     await page.keyboard.press('Enter');
     await settle(1200);
     assert.equal(await panelIsOpen(), false);
+    assert.equal(await modalTitle(), undefined);
     const selection = await page.$eval('[id="status.editor.selection"]', (item) => item.textContent);
     assert.match(selection, /^Ln 7, Col 41 \(10 selected\)/);
   });

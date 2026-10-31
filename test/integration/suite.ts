@@ -37,10 +37,11 @@ function registerTests(): void {
 
     suiteTeardown(() => vscode.commands.executeCommand('workbench.action.closeAllEditors'));
 
-    test('opens the search as a webview tab', () => {
+    test('opens the search as a custom editor', () => {
       const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
-      assert.equal(tab?.label, 'C# Code Search');
-      assert.ok(tab?.input instanceof vscode.TabInputWebview);
+      assert.equal(tab?.label, 'Code Search');
+      assert.ok(tab?.input instanceof vscode.TabInputCustom);
+      assert.equal(tab.input.viewType, 'csharpCodeSearch.search');
     });
 
     test('indexes the workspace in worker threads', () => {

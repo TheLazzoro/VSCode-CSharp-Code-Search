@@ -7,7 +7,20 @@ import { readSource, SymbolIndex } from './symbolIndex';
 import { resolveTokenColors } from './theme';
 import type { WorkerPool } from './workerPool';
 
-const VIEW_TYPE = 'csharpCodeSearch';
+const VIEW_TYPE = 'csharpCodeSearch.search';
+/**
+ * Virtual document behind the search. VS Code titles it with the file name followed by the parent
+ * folder, which is why the path is relative: under a root it would show a stray `\` on Windows.
+ */
+const SEARCH_URI = vscode.Uri.from({ scheme: 'csharp-code-search', path: 'C#/Code Search' });
+/**
+ * VS Code's internal editor group for the modal overlay that Settings opens in. The public API has
+ * no way to reach it: `ViewColumn` has no value for it, and both `createWebviewPanel` and
+ * `vscode.openWith` turn unknown columns into the active group. Only the internal command behind
+ * `vscode.openWith` takes the raw group, and only for editors opened by URI, so the search is a
+ * custom editor. With `workbench.editor.useModal` set to `off`, this group opens a normal tab.
+ */
+const MODAL_EDITOR_GROUP = -4;
 const REFRESH_THROTTLE_MS = 200;
 const DEFAULT_MAX_RESULTS = 200;
 
@@ -30,10 +43,37 @@ function activeCSharpFile(editor: vscode.TextEditor | undefined): string | undef
   return document?.languageId === 'csharp' && document.uri.scheme === 'file' ? document.uri.fsPath : undefined;
 }
 
+function supportsModalEditors(): boolean {
+  return vscode.workspace.getConfiguration('workbench.editor').inspect('useModal')?.defaultValue !== undefined;
+}
+
+function openSearchEditor(): Thenable<unknown> {
+  return supportsModalEditors()
+    ? vscode.commands.executeCommand('_workbench.openWith', SEARCH_URI, VIEW_TYPE, [MODAL_EDITOR_GROUP])
+    : vscode.commands.executeCommand('vscode.openWith', SEARCH_URI, VIEW_TYPE, vscode.ViewColumn.Active);
+}
+
+/** Gives VS Code a webview for the search whenever it opens or restores the virtual document. */
+export class CodeSearchEditorProvider implements vscode.CustomReadonlyEditorProvider {
+  static readonly viewType = VIEW_TYPE;
+
+  constructor(private readonly dependencies: PanelDependencies) {}
+
+  openCustomDocument(uri: vscode.Uri): vscode.CustomDocument {
+    return { uri, dispose: () => undefined };
+  }
+
+  resolveCustomEditor(_document: vscode.CustomDocument, panel: vscode.WebviewPanel): void {
+    CodeSearchPanel.attach(panel, this.dependencies);
+  }
+}
+
 export class CodeSearchPanel {
   private static current: CodeSearchPanel | undefined;
   /** Survives closing the panel, so reopening it resumes the last search. */
   private static lastQuery: QueryState = { text: '', filter: 'all', scope: 'workspace' };
+  /** The active editor is gone by the time the webview resolves, so it is captured here. */
+  private static invokingEditor: vscode.TextEditor | undefined;
 
   private readonly disposables: vscode.Disposable[] = [];
   private activeDocument: string | undefined;
@@ -41,23 +81,17 @@ export class CodeSearchPanel {
   private seq = 0;
   private refreshTimer: NodeJS.Timeout | undefined;
 
-  static show(dependencies: PanelDependencies): void {
+  static async show(): Promise<void> {
     const editor = vscode.window.activeTextEditor;
-    if (CodeSearchPanel.current) {
-      CodeSearchPanel.current.reveal(editor);
-      return;
-    }
-    const panel = vscode.window.createWebviewPanel(
-      VIEW_TYPE,
-      'C# Code Search',
-      vscode.ViewColumn.Active,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [dependencies.distUri],
-      },
-    );
-    CodeSearchPanel.current = new CodeSearchPanel(panel, dependencies, editor);
+    const existing = CodeSearchPanel.current;
+    CodeSearchPanel.invokingEditor = editor;
+    await openSearchEditor();
+    existing?.reveal(editor);
+  }
+
+  static attach(panel: vscode.WebviewPanel, dependencies: PanelDependencies): void {
+    dependencies.index.start();
+    CodeSearchPanel.current = new CodeSearchPanel(panel, dependencies, CodeSearchPanel.invokingEditor);
   }
 
   private constructor(
@@ -70,6 +104,7 @@ export class CodeSearchPanel {
     if (!this.activeDocument) {
       this.query.scope = 'workspace';
     }
+    panel.webview.options = { enableScripts: true, localResourceRoots: [dependencies.distUri] };
     panel.webview.html = this.renderHtml();
     this.disposables.push(
       panel.onDidDispose(() => this.dispose()),
@@ -85,7 +120,7 @@ export class CodeSearchPanel {
   }
 
   private reveal(editor: vscode.TextEditor | undefined): void {
-    this.panel.reveal(undefined, false);
+    this.dependencies.index.start();
     // The active editor is undefined when the shortcut is pressed inside the panel itself.
     if (editor) {
       this.activeDocument = activeCSharpFile(editor);
@@ -154,9 +189,11 @@ export class CodeSearchPanel {
   private async open(location: SourceLocation, beside: boolean): Promise<void> {
     const start = new vscode.Position(location.line, location.column);
     const range = new vscode.Range(start, start.translate(0, location.length));
+    // Opening anywhere else closes the modal, unless focus stays behind in it.
     const editor = await vscode.window.showTextDocument(vscode.Uri.file(location.file), {
       selection: range,
       viewColumn: beside ? vscode.ViewColumn.Beside : this.panel.viewColumn,
+      preserveFocus: beside,
     });
     editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     if (!beside) {

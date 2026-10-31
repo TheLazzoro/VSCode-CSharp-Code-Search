@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { CodeSearchPanel } from './codeSearchPanel';
+import { CodeSearchEditorProvider, CodeSearchPanel } from './codeSearchPanel';
 import { SymbolIndex } from './symbolIndex';
 import { WorkerPool } from './workerPool';
 
@@ -16,10 +16,12 @@ export function activate(context: vscode.ExtensionContext): CodeSearchApi {
   context.subscriptions.push(
     pool,
     index,
-    vscode.commands.registerCommand('csharpCodeSearch.open', () => {
-      index.start();
-      CodeSearchPanel.show({ distUri, index, pool });
-    }),
+    vscode.window.registerCustomEditorProvider(
+      CodeSearchEditorProvider.viewType,
+      new CodeSearchEditorProvider({ distUri, index, pool }),
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+    vscode.commands.registerCommand('csharpCodeSearch.open', () => CodeSearchPanel.show()),
     vscode.commands.registerCommand('csharpCodeSearch.rebuildIndex', async () => {
       index.start();
       await vscode.window.withProgress(

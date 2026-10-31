@@ -4,14 +4,14 @@ Visual Studio's Code Search (`Ctrl+T`) for VS Code. Find types, methods, propert
 
 ## Usage
 
-Press `Ctrl+T` (`Cmd+T` on macOS) in a C# file, or run **C#: Code Search** from the Command Palette. Selected text on a single line becomes the search.
+Press `Ctrl+T` (`Cmd+T` on macOS) in a C# file, or run **C#: Code Search** from the Command Palette. The search opens as a dialog over the editor, the same way Settings does, and you can resize, maximize or move it out with the buttons in its title bar. Selected text on a single line becomes the search.
 
 | Key | Action |
 | --- | --- |
 | `↑` `↓` `PgUp` `PgDn` | Move through the results and update the preview |
-| `Enter` or double-click | Go to the declaration and close the panel |
-| `Ctrl+Enter` | Open beside the panel and keep searching |
-| `Esc` | Close the panel |
+| `Enter` or double-click | Go to the declaration and close the dialog |
+| `Ctrl+Enter` | Open in the editor behind the dialog and keep searching |
+| `Esc` | Close the dialog |
 
 ### Searching
 
@@ -48,7 +48,7 @@ On a generated workspace of 20,000 files and 1.28 million symbols, indexing took
 ## Limitations
 
 - **It reads syntax, not semantics.** `var` is shown as `var` rather than the inferred type, partial classes appear once per file, and only source code in the workspace is searched, not referenced assemblies.
-- **The panel is an editor tab.** VS Code doesn't let extensions float a panel over the editor, so it opens as a tab that closes when you pick a result.
+- **The dialog relies on an internal VS Code command.** The public API can't open an editor in the dialog overlay that Settings uses, so the extension calls `_workbench.openWith`, which could change in any VS Code release. It opens as a normal tab instead in versions without the overlay, or when `workbench.editor.useModal` is `off`. If you reload the window, the dialog closes.
 - **There is no full-text tab.** Use VS Code's **Search** view (`Ctrl+Shift+F`) to search text.
 - **The index is kept in memory** and rebuilt the first time you search in each window.
 - **Some newer syntax isn't recognized yet.** C# 14 `extension` blocks aren't in the grammar, positional `is var (a, b)` patterns aren't reported, and neither are query variables after `group ... into`. The rest of such a file is still indexed.
