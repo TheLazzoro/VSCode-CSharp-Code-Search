@@ -2,8 +2,9 @@
   "name": "csharp-code-search",
   "displayName": "C# Code Search",
   "description": "Visual Studio style Code Search for C#: find types, methods, fields, locals and parameters with a live code preview.",
-  "version": "0.1.0",
-  "publisher": "local",
+  "version": "1.0.0",
+  "publisher": "LazZ",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -93,7 +94,7 @@
     "test": "vitest run",
     "test:integration": "node esbuild.mjs --tests && node out/test/runTest.js",
     "test:e2e": "node esbuild.mjs && node test/e2e/run.mjs",
-    "package": "vsce package --no-dependencies --skip-license --allow-missing-repository",
+    "package": "vsce package --no-dependencies --allow-missing-repository",
     "vscode:prepublish": "node esbuild.mjs --production"
   },
   "devDependencies": {

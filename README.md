@@ -68,4 +68,8 @@ npm run package           # Build a .vsix
 
 Press `F5` to run the extension against `test/fixtures/sample`. The integration and end-to-end tests download a copy of VS Code to `.vscode-test/` on first use.
 
-`publisher` in `package.json` is the placeholder `local`, which is fine for installing a `.vsix` directly. Set your own publisher and add a license before publishing to the Marketplace.
+`publisher` in `package.json` is the placeholder `local`, which is fine for installing a `.vsix` directly. Set your own publisher before publishing to the Marketplace.
+
+## License
+
+MIT. See the `LICENSE` file. Bundled third-party software is listed in `THIRD_PARTY_NOTICES.md`.
